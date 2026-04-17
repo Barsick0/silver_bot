@@ -15,27 +15,27 @@ from datetime import time as dtime
 @dataclass
 class StrategyConfig:
     # Machine Learning Core
-    length:     int   = 18
-    h_param:    float = 2.0
-    r_param:    float = 3.0
+    length:     int   = 22
+    h_param:    float = 30
+    r_param:    float = 3
 
     # Channel Width
-    mult_inner: float = 1.5
-    mult_outer: float = 1.9
+    mult_inner: float = 3
+    mult_outer: float = 3
 
     # Entry Condition
     use_close_cross: bool = False   # True = вход по закрытию за каналом
 
     # Trend Filter — Pivot Point SuperTrend
     use_trend_filter: bool  = True
-    prd:              int   = 16
-    atr_factor:       float = 2.0
-    atr_pd:           int   = 5
+    prd:              int   = 5
+    atr_factor:       float = 3
+    atr_pd:           int   = 6
 
     # ATR Volatility Filter
     use_atr_filter:   bool  = True
     atr_filter_len:   int   = 20
-    atr_ma_len:       int   = 30
+    atr_ma_len:       int   = 25
     atr_mult_thresh:  float = 1.0
 
     # Session Time Filter (московское время биржи)
@@ -45,8 +45,8 @@ class StrategyConfig:
     trade_weekends:   bool  = False
 
     # Risk Management
-    sl_perc: float = 0.6
-    tp_perc: float = 0.5
+    sl_perc: float = 0.55
+    tp_perc: float = 0.75
 
 
 # ─────────────────────────────────────────────
