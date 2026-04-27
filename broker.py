@@ -59,7 +59,7 @@ class TInvestBroker:
 
     async def disconnect(self):
         if self._client:
-            await self._client.__aexit__(None, None, None)
+            await self._client.close()
             log.info("🔌 Disconnected")
 
     # ── Свечи ───────────────────────────────
