@@ -57,7 +57,7 @@ class TInvestBroker:
         self._client = await AsyncClient(self.token, target=target).__aenter__()
         log.info("✅ T-Invest API connected")
 
-    async def disconnect(self):
+async def disconnect(self):
         if self._client:
             await self._client.close()
             log.info("🔌 Disconnected")
@@ -173,35 +173,43 @@ class TInvestBroker:
         pos = await self.get_position()
         if pos["side"] == "long":
             await self.place_market_order("sell", pos["qty"])
+        elif pos["side"] == "short":
+            await self.place_market_order("buy", pos["qty"])
 
     async def enter_trade(self, signal, entry_price, sl_perc, tp_perc, qty):
 
-        if signal != "long":
+        if signal == "long":
+            sl = entry_price * (1 - sl_perc / 100)
+            tp = entry_price * (1 + tp_perc / 100)
+            direction = "buy"
+            stop_dir = "sell"
+        elif signal == "short":
+            sl = entry_price * (1 + sl_perc / 100)
+            tp = entry_price * (1 - tp_perc / 100)
+            direction = "sell"
+            stop_dir = "buy"
+        else:
             return
 
-        sl = entry_price * (1 - sl_perc / 100)
-        tp = entry_price * (1 + tp_perc / 100)
+        log.info("📥 Opening %s position...", signal)
 
-        log.info("📥 Opening position...")
+        await self.place_market_order(direction, qty)
 
-        await self.place_market_order("buy", qty)
-
-        # Ждем подтверждение позиции
         for _ in range(10):
             await asyncio.sleep(0.5)
             pos = await self.get_position()
-            if pos["side"] == "long":
+            if (signal == "long" and pos["side"] == "long") or \
+               (signal == "short" and pos["side"] == "short"):
                 log.info("✅ Position confirmed")
                 break
         else:
             log.error("❌ Position NOT found after entry!")
             return
 
-        # Ставим защиту
         log.info("🛡️ Placing SL/TP...")
 
-        await self.place_stop_order("sell", sl, qty, False)
-        await self.place_stop_order("sell", tp, qty, True)
+        await self.place_stop_order(stop_dir, sl, qty, False)
+        await self.place_stop_order(stop_dir, tp, qty, True)
 
         log.info("✅ Trade entered with protection")
 
