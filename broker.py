@@ -57,7 +57,7 @@ class TInvestBroker:
         self._client = await AsyncClient(self.token, target=target).__aenter__()
         log.info("✅ T-Invest API connected")
 
-async def disconnect(self):
+    async def disconnect(self):
         if self._client:
             await self._client.close()
             log.info("🔌 Disconnected")
