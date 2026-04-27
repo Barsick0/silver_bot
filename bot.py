@@ -123,12 +123,18 @@ class TradingBot:
 
             # 💣 аварийный убыток
             entry = pos["avg_price"]
-            loss_pct = ((entry - candle["close"]) / entry) * 100
+            close = candle["close"]
+            side = pos["side"]
+
+            if side == "long":
+                loss_pct = ((entry - close) / entry) * 100
+            else:  # short
+                loss_pct = ((close - entry) / entry) * 100
 
             emergency_sl = STRATEGY_CFG.sl_perc + EMERGENCY_SL_EXTRA
 
             if loss_pct >= emergency_sl:
-                log.warning("💣 EXIT: LOSS (%.3f%%)", loss_pct)
+                log.warning("💣 EXIT: LOSS (%.3f%%) [%s]", loss_pct, side)
                 await self.broker.close_position()
                 await self.broker.cancel_all_orders()
                 self.position_open_time = None
@@ -140,19 +146,19 @@ class TradingBot:
             if not stops:
                 log.warning("⚠️ restoring stops")
 
-                await self.broker.place_stop_order(
-                    "sell",
-                    entry * (1 - STRATEGY_CFG.sl_perc / 100),
-                    pos["qty"],
-                    False
-                )
+                if side == "long":
+                    sl = entry * (1 - STRATEGY_CFG.sl_perc / 100)
+                    tp = entry * (1 + STRATEGY_CFG.tp_perc / 100)
+                    sl_dir = "sell"
+                    tp_dir = "sell"
+                else:  # short
+                    sl = entry * (1 + STRATEGY_CFG.sl_perc / 100)
+                    tp = entry * (1 - STRATEGY_CFG.tp_perc / 100)
+                    sl_dir = "buy"
+                    tp_dir = "buy"
 
-                await self.broker.place_stop_order(
-                    "sell",
-                    entry * (1 + STRATEGY_CFG.tp_perc / 100),
-                    pos["qty"],
-                    True
-                )
+                await self.broker.place_stop_order(sl_dir, sl, pos["qty"], False)
+                await self.broker.place_stop_order(tp_dir, tp, pos["qty"], True)
 
             return
 
