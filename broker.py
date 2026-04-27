@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 
-from tinkoff.invest import (
+from t_tech.invest import (
     AsyncClient,
     CandleInterval,
     OrderDirection,
@@ -13,7 +13,8 @@ from tinkoff.invest import (
     StopOrderExpirationType,
     Quotation,
 )
-from tinkoff.invest.utils import quotation_to_decimal, decimal_to_quotation
+from t_tech.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
+from t_tech.invest.utils import quotation_to_decimal, decimal_to_quotation
 
 log = logging.getLogger("broker")
 
@@ -52,13 +53,13 @@ class TInvestBroker:
     # ── Подключение ─────────────────────────
 
     async def connect(self):
-        self._client = await AsyncClient(self.token).__aenter__()
+        target = INVEST_GRPC_API_SANDBOX if self.sandbox else INVEST_GRPC_API
+        self._client = await AsyncClient(self.token, target=target).__aenter__()
         log.info("✅ T-Invest API connected")
 
     async def disconnect(self):
         if self._client:
-            async def disconnect(self):
-                pass
+            await self._client.__aexit__(None, None, None)
             log.info("🔌 Disconnected")
 
     # ── Свечи ───────────────────────────────
@@ -154,15 +155,13 @@ class TInvestBroker:
         resp = await self._client.stop_orders.post_stop_order(
             figi=self.figi,
             quantity=qty,
+            price=float_to_q(stop_price) if is_tp else None,
             stop_price=float_to_q(stop_price),
             direction=stop_dir,
             account_id=self.account_id,
             stop_order_type=stop_type,
-
-            # 🔥 КРИТИЧНО
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
-
-            expire_date=datetime.now(timezone.utc) + timedelta(days=30),
+            expire_date=None,
         )
 
         log.info("🛡️ Stop order (%s) placed", "TP" if is_tp else "SL")
@@ -205,3 +204,6 @@ class TInvestBroker:
         await self.place_stop_order("sell", tp, qty, True)
 
         log.info("✅ Trade entered with protection")
+
+    async def cancel_all_orders(self):
+        await self._client.cancel_all_orders(account_id=self.account_id)

@@ -1,7 +1,3 @@
-#API_TOKEN = os.environ.get("TINVEST_TOKEN", "t.zk7e6YqLqAiG9YqLKGH5UY91gM1vUeBNpgMXI_fa6PIcU6j8xkBwJeY5FNoVb5-HN6swMll2JroEpq9yQTxpYA")
-#ACCOUNT_ID = os.environ.get("TINVEST_ACCOUNT", "2311962054")
-#FIGI = os.environ.get("TINVEST_FIGI", "FUTSILVM0626")
-
 import asyncio
 import logging
 import os
@@ -20,9 +16,9 @@ from broker import TInvestBroker
 # ⚙️ CORE CONFIG (НАСТРАИВАЕМОЕ ЯДРО)
 # ─────────────────────────────────────────────
 
-API_TOKEN = os.getenv("TOKEN")
-ACCOUNT_ID = os.getenv("ACCOUNT_ID")
-FIGI = os.getenv("FIGI")
+API_TOKEN = os.getenv("TINVEST_TOKEN")
+ACCOUNT_ID = os.getenv("TINVEST_ACCOUNT")
+FIGI = os.getenv("TINVEST_FIGI")
 
 LOT_QTY = 1
 
@@ -121,7 +117,7 @@ class TradingBot:
             if minutes > MAX_TRADE_DURATION_MIN:
                 log.warning("⏰ EXIT: TIMEOUT (%.1f min)", minutes)
                 await self.broker.close_position()
-                await self.broker.cancel_all_stops()
+                await self.broker.cancel_all_orders()
                 self.position_open_time = None
                 return
 
@@ -134,7 +130,7 @@ class TradingBot:
             if loss_pct >= emergency_sl:
                 log.warning("💣 EXIT: LOSS (%.3f%%)", loss_pct)
                 await self.broker.close_position()
-                await self.broker.cancel_all_stops()
+                await self.broker.cancel_all_orders()
                 self.position_open_time = None
                 return
 
