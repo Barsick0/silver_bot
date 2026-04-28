@@ -49,8 +49,8 @@ class StrategyConfig:
     # ── ATR Filter ───────────────────────────
     use_atr_filter: bool  = True
     atr_flt_len:    int   = 14
-    atr_flt_smooth: str   = "rma"   # "rma" | "sma" | "ema" | "wma"
-    atr_flt_min:    float = 0.05     # price units; entries blocked below this
+    atr_flt_smooth: str   = "ema"   # "rma" | "sma" | "ema" | "wma"
+    atr_flt_min:    float = 0.14     # price units; entries blocked below this
 
     # ── Time Filter ──────────────────────────
     use_time_filter: bool  = True

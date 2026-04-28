@@ -85,6 +85,11 @@ class TradingBot:
         if candle["timestamp"] == self._last_candle_time:
             return
 
+        # Only process on 5-minute candle boundaries (00, 05, 10, 15, 20, 25, ...)
+        minute = candle["timestamp"].minute
+        if minute % 5 != 0:
+            return
+
         self._last_candle_time = candle["timestamp"]
 
         log.info(

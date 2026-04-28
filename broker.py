@@ -105,17 +105,27 @@ class TInvestBroker:
                 qty = int(quotation_to_decimal(pos.quantity))
                 if qty > 0:
                     side = "long"
+                    avg_price = q_to_float(pos.average_position_price)
+                    # Check for SHORT position using various possible attributes
                     try:
-                        if hasattr(pos, "direction") and pos.direction:
-                            direction_str = str(pos.direction)
+                        # Try position_direction attribute (T-Invest API v2)
+                        if hasattr(pos, "position_direction") and pos.position_direction:
+                            direction_str = str(pos.position_direction)
                             if "SHORT" in direction_str.upper():
                                 side = "short"
-                    except Exception:
-                        pass
+                        # Fallback: check if average_price is None but qty > 0 might still be SHORT
+                        # Also check quantity_lots which might indicate SHORT
+                        elif hasattr(pos, "quantity_lots") and pos.quantity_lots:
+                            lots = int(quotation_to_decimal(pos.quantity_lots))
+                            if lots < 0:
+                                side = "short"
+                    except Exception as e:
+                        log.warning("⚠️ Position direction detection: %s", e)
+                    
                     return {
                         "side": side,
                         "qty": qty,
-                        "avg_price": q_to_float(pos.average_position_price),
+                        "avg_price": avg_price,
                     }
         return {"side": None, "qty": 0, "avg_price": 0.0}
 
@@ -199,6 +209,32 @@ class TInvestBroker:
         else:
             return
 
+        # Check for existing position (pyramiding)
+        existing_pos = await self.get_position()
+        is_pyramiding = existing_pos["side"] is not None and existing_pos["qty"] > 0
+
+        if is_pyramiding:
+            log.info("📐 Pyramiding: existing %s %d @ %.4f", 
+                   existing_pos["side"], existing_pos["qty"], existing_pos["avg_price"])
+            
+            # Calculate new average price for SL move
+            if existing_pos["side"] == signal:  # Same direction - average in
+                total_qty = existing_pos["qty"] + qty
+                new_avg = (
+                    (existing_pos["avg_price"] * existing_pos["qty"] + entry_price * qty) / total_qty
+                )
+                
+                # Recalculate SL to new average
+                if signal == "long":
+                    sl = new_avg * (1 - sl_perc / 100)
+                else:
+                    sl = new_avg * (1 + sl_perc / 100)
+                
+                log.info("📐 New avg price: %.4f, new SL: %.4f", new_avg, sl)
+                
+                # Cancel existing stop orders and place new SL at average
+                await self.cancel_all_orders()
+        
         log.info("📥 Opening %s position...", signal)
 
         await self.place_market_order(direction, qty)
@@ -216,8 +252,8 @@ class TInvestBroker:
 
         log.info("🛡️ Placing SL/TP...")
 
-        await self.place_stop_order(stop_dir, sl, qty, False)
-        await self.place_stop_order(stop_dir, tp, qty, True)
+        await self.place_stop_order(stop_dir, sl, pos["qty"], False)
+        await self.place_stop_order(stop_dir, tp, pos["qty"], True)
 
         log.info("✅ Trade entered with protection")
 
