@@ -152,13 +152,13 @@ class TradingBot:
                 log.warning("⚠️ restoring stops")
 
                 if side == "long":
-                    sl = entry * (1 - STRATEGY_CFG.sl_perc / 100)
-                    tp = entry * (1 + STRATEGY_CFG.tp_perc / 100)
+                    sl = round(entry * (1 - STRATEGY_CFG.sl_perc / 100), 2)
+                    tp = round(entry * (1 + STRATEGY_CFG.tp_perc / 100), 2)
                     sl_dir = "sell"
                     tp_dir = "sell"
                 else:  # short
-                    sl = entry * (1 + STRATEGY_CFG.sl_perc / 100)
-                    tp = entry * (1 - STRATEGY_CFG.tp_perc / 100)
+                    sl = round(entry * (1 + STRATEGY_CFG.sl_perc / 100), 2)
+                    tp = round(entry * (1 - STRATEGY_CFG.tp_perc / 100), 2)
                     sl_dir = "buy"
                     tp_dir = "buy"
 

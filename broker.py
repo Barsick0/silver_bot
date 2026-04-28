@@ -30,7 +30,8 @@ def q_to_float(q) -> float:
 
 
 def float_to_q(value: float) -> Quotation:
-    return decimal_to_quotation(Decimal(str(round(value, 9))))
+    rounded = round(value, 2)
+    return decimal_to_quotation(Decimal(str(rounded)))
 
 
 # ─────────────────────────────────────────────
@@ -198,13 +199,13 @@ class TInvestBroker:
     async def enter_trade(self, signal, entry_price, sl_perc, tp_perc, qty):
 
         if signal == "long":
-            sl = entry_price * (1 - sl_perc / 100)
-            tp = entry_price * (1 + tp_perc / 100)
+            sl = round(entry_price * (1 - sl_perc / 100), 2)
+            tp = round(entry_price * (1 + tp_perc / 100), 2)
             direction = "buy"
             stop_dir = "sell"
         elif signal == "short":
-            sl = entry_price * (1 + sl_perc / 100)
-            tp = entry_price * (1 - tp_perc / 100)
+            sl = round(entry_price * (1 + sl_perc / 100), 2)
+            tp = round(entry_price * (1 - tp_perc / 100), 2)
             direction = "sell"
             stop_dir = "buy"
         else:
@@ -238,9 +239,9 @@ class TInvestBroker:
                 
                 # Recalculate SL to new average
                 if signal == "long":
-                    sl = new_avg * (1 - sl_perc / 100)
+                    sl = round(new_avg * (1 - sl_perc / 100), 2)
                 else:
-                    sl = new_avg * (1 + sl_perc / 100)
+                    sl = round(new_avg * (1 + sl_perc / 100), 2)
                 
                 log.info("📐 New avg price: %.4f, new SL: %.4f", new_avg, sl)
         
@@ -278,13 +279,13 @@ class TInvestBroker:
         qty = pos["qty"]
         
         if side == "long":
-            expected_sl = entry * (1 - sl_perc / 100)
-            expected_tp = entry * (1 + tp_perc / 100)
+            expected_sl = round(entry * (1 - sl_perc / 100), 2)
+            expected_tp = round(entry * (1 + tp_perc / 100), 2)
             sl_dir = "sell"
             tp_dir = "sell"
         else:
-            expected_sl = entry * (1 + sl_perc / 100)
-            expected_tp = entry * (1 - tp_perc / 100)
+            expected_sl = round(entry * (1 + sl_perc / 100), 2)
+            expected_tp = round(entry * (1 - tp_perc / 100), 2)
             sl_dir = "buy"
             tp_dir = "buy"
         
