@@ -39,7 +39,7 @@ def float_to_q(value: float) -> Quotation:
 
 class TInvestBroker:
 
-    CANDLE_INTERVAL = CandleInterval.CANDLE_INTERVAL_1_MIN
+    CANDLE_INTERVAL = CandleInterval.CANDLE_INTERVAL_5_MIN
 
     def __init__(self, token: str, account_id: str, figi: str,
                  lot_size: int = 1, sandbox: bool = False):
@@ -66,7 +66,8 @@ class TInvestBroker:
 
     async def get_candles(self, count: int = 500):
         now = datetime.now(timezone.utc)
-        from_ = now - timedelta(minutes=count + 10)
+        # 5-minute candles: count * 5 minutes
+        from_ = now - timedelta(minutes=count * 5 + 10)
 
         resp = await self._client.market_data.get_candles(
             figi=self.figi,
