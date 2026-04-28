@@ -104,8 +104,16 @@ class TInvestBroker:
             if pos.figi == self.figi:
                 qty = int(quotation_to_decimal(pos.quantity))
                 if qty > 0:
+                    side = "long"
+                    try:
+                        if hasattr(pos, "direction") and pos.direction:
+                            direction_str = str(pos.direction)
+                            if "SHORT" in direction_str.upper():
+                                side = "short"
+                    except Exception:
+                        pass
                     return {
-                        "side": "long",
+                        "side": side,
                         "qty": qty,
                         "avg_price": q_to_float(pos.average_position_price),
                     }
