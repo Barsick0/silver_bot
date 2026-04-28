@@ -218,6 +218,17 @@ class TInvestBroker:
             log.info("📐 Pyramiding: existing %s %d @ %.4f", 
                    existing_pos["side"], existing_pos["qty"], existing_pos["avg_price"])
             
+            # Save current stop order prices before attempting new entry
+            current_stops = await self.get_stop_orders()
+            saved_sl = None
+            saved_tp = None
+            for stop in current_stops:
+                price = q_to_float(stop.stop_price)
+                if "take" in str(stop.stop_order_type).lower():
+                    saved_tp = price
+                else:
+                    saved_sl = price
+            
             # Calculate new average price for SL move
             if existing_pos["side"] == signal:  # Same direction - average in
                 total_qty = existing_pos["qty"] + qty
@@ -232,9 +243,6 @@ class TInvestBroker:
                     sl = new_avg * (1 + sl_perc / 100)
                 
                 log.info("📐 New avg price: %.4f, new SL: %.4f", new_avg, sl)
-                
-                # Cancel existing stop orders and place new SL at average
-                await self.cancel_all_orders()
         
         log.info("📥 Opening %s position...", signal)
 
@@ -253,10 +261,64 @@ class TInvestBroker:
 
         log.info("🛡️ Placing SL/TP...")
 
+        # Cancel old stop orders (only if we had existing position with stops)
+        if is_pyramiding:
+            await self.cancel_all_orders()
+
         await self.place_stop_order(stop_dir, sl, pos["qty"], False)
         await self.place_stop_order(stop_dir, tp, pos["qty"], True)
 
         log.info("✅ Trade entered with protection")
+
+    async def verify_and_restore_stops(self, pos: dict, sl_perc: float, tp_perc: float):
+        """Verify SL/TP are correct, restore if missing or wrong."""
+        current_stops = await self.get_stop_orders()
+        entry = pos["avg_price"]
+        side = pos["side"]
+        qty = pos["qty"]
+        
+        if side == "long":
+            expected_sl = entry * (1 - sl_perc / 100)
+            expected_tp = entry * (1 + tp_perc / 100)
+            sl_dir = "sell"
+            tp_dir = "sell"
+        else:
+            expected_sl = entry * (1 + sl_perc / 100)
+            expected_tp = entry * (1 - tp_perc / 100)
+            sl_dir = "buy"
+            tp_dir = "buy"
+        
+        sl_missing = True
+        tp_missing = True
+        sl_wrong = False
+        tp_wrong = False
+        
+        for stop in current_stops:
+            price = q_to_float(stop.stop_price)
+            stop_type = str(stop.stop_order_type)
+            
+            if "take" in stop_type.lower():
+                tp_missing = False
+                if abs(price - expected_tp) > 0.01:
+                    tp_wrong = True
+            else:
+                sl_missing = False
+                if abs(price - expected_sl) > 0.01:
+                    sl_wrong = True
+        
+        if sl_missing or tp_missing or sl_wrong or tp_wrong:
+            log.warning("⚠️ Stops verification failed: SL=%s TP=%s. Restoring...",
+                       "missing" if sl_missing else ("wrong" if sl_wrong else "OK"),
+                       "missing" if tp_missing else ("wrong" if tp_wrong else "OK"))
+            
+            # Cancel all and place correct stops
+            await self.cancel_all_orders()
+            await self.place_stop_order(sl_dir, expected_sl, qty, False)
+            await self.place_stop_order(tp_dir, expected_tp, qty, True)
+            log.info("✅ Stops restored: SL=%.4f TP=%.4f", expected_sl, expected_tp)
+            return True
+        
+        return False
 
     async def cancel_all_orders(self):
         await self._client.cancel_all_orders(account_id=self.account_id)

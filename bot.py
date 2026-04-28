@@ -165,6 +165,15 @@ class TradingBot:
                 await self.broker.place_stop_order(sl_dir, sl, pos["qty"], False)
                 await self.broker.place_stop_order(tp_dir, tp, pos["qty"], True)
 
+            # 🛡 ALWAYS verify stops are correct
+            else:
+                # Position exists but no stops - restore immediately
+                await self.broker.verify_and_restore_stops(
+                    pos,
+                    STRATEGY_CFG.sl_perc,
+                    STRATEGY_CFG.tp_perc
+                )
+
             return
 
         # ─────────── ВХОД ───────────
